@@ -1,0 +1,128 @@
+I want to create a small box that'll allow a text input and send button 
+
+how do I do this
+
+
+Examined Canvas Kit documentation to construct input and button components.
+
+
+
+
+Based on the Canvas Kit structure in the documentation, you can create a text input with a send button by modifying your canvas object like this:
+
+javascript
+const inputCanvas = {
+  canvas: {
+    content: {
+      components: [
+        {
+          type: "input",
+          id: "text_input",
+          label: "Enter your message",
+          placeholder: "Type here...",
+          value: ""
+        },
+        {
+          type: "button",
+          label: "Send",
+          style: "primary",
+          id: "send_button",
+          action: {
+            type: "submit",
+          },
+        },
+      ],
+    },
+  },
+};
+Then in your /submit endpoint, you can access the input value:
+
+javascript
+app.post("/submit", (request, response) => {
+  if (request.body.component_id == "send_button") {
+    let userInput = request.body.input_values.text_input;
+    
+    // Do something with the input
+    console.log("User entered:", userInput);
+    
+    // Send back a response canvas or the same canvas
+    response.send(inputCanvas);
+  }
+});
+The key points:
+
+Use type: "input" for the text field
+Give it a unique id (like "text_input")
+Access the value via request.body.input_values.text_input in your submit handler
+The button with type: "submit" will trigger the POST to your /submit endpoint
+Check the Canvas Kit Reference for more input field options and validation.
+
+Ok but where do I upload that
+
+
+Charted deployment pathway and configuration steps.
+
+
+You need to set this up in a few places:
+
+1. Write the code in your server file
+Put this in your index.js (or equivalent Node.js server file):
+
+javascript
+const inputCanvas = {
+  canvas: {
+    content: {
+      components: [
+        {
+          type: "input",
+          id: "text_input",
+          label: "Enter your message",
+          placeholder: "Type here...",
+        },
+        {
+          type: "button",
+          label: "Send",
+          style: "primary",
+          id: "send_button",
+          action: {
+            type: "submit",
+          },
+        },
+      ],
+    },
+  },
+};
+
+// Return this canvas when the app initializes
+app.post("/initialize", (request, response) => {
+  response.send(inputCanvas);
+});
+
+// Handle the submit
+app.post("/submit", (request, response) => {
+  if (request.body.component_id == "send_button") {
+    let userInput = request.body.input_values.text_input;
+    console.log("User entered:", userInput);
+    response.send(inputCanvas); // Show the form again
+  }
+});
+2. Deploy your server
+Replit: Click "Run" - it gives you a URL like https://your-app.replit.app
+Other options: Heroku, Railway, Render, or any hosting service
+3. Add the URLs to Intercom
+Go to your Intercom Developer Hub:
+
+Click your app → Canvas Kit → For teammates
+Add your endpoints:
+Initialize URL: https://your-app.replit.app/initialize
+Submit URL: https://your-app.replit.app/submit
+Toggle it On
+That's it! The app will now appear in your Inbox sidebar.
+
+
+
+Ok s
+
+
+
+
