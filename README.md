@@ -16,12 +16,14 @@ This is a webhook-based application that integrates with Intercom using their Ca
 
 ## Setup Instructions
 
-### 1. Deploy to Replit
+### 1. Get Your Webhook URLs
 
-This application is ready to run on Replit:
+This application is already running on Replit. Your webhook URLs are:
 
-1. Click the "Run" button
-2. Your app will be deployed and you'll get a URL like `https://your-repl-name.replit.app`
+- **Initialize URL**: `https://workspace.replit.app/initialize`
+- **Submit URL**: `https://workspace.replit.app/submit`
+
+(Replace `workspace.replit.app` with your actual Replit domain if different)
 
 ### 2. Configure in Intercom Developer Hub
 

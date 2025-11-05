@@ -1,27 +1,38 @@
 // Storage interface for Intercom Canvas Kit app
-// This app stores submitted messages in memory
+// Using PostgreSQL database for persistent message storage
+// Reference: blueprint:javascript_database
+
+import { messages, type Message, type InsertMessage } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
-  saveMessage(workspaceId: string, message: string): Promise<void>;
-  getMessages(workspaceId: string): Promise<string[]>;
+  saveMessage(workspaceId: string, message: string): Promise<Message>;
+  getMessages(workspaceId: string): Promise<Message[]>;
 }
 
-export class MemStorage implements IStorage {
-  private messages: Map<string, string[]>;
+export class DatabaseStorage implements IStorage {
+  async saveMessage(workspaceId: string, message: string): Promise<Message> {
+    const insertData: InsertMessage = {
+      workspaceId,
+      message,
+    };
 
-  constructor() {
-    this.messages = new Map();
+    const [savedMessage] = await db
+      .insert(messages)
+      .values(insertData)
+      .returning();
+
+    return savedMessage;
   }
 
-  async saveMessage(workspaceId: string, message: string): Promise<void> {
-    const existing = this.messages.get(workspaceId) || [];
-    existing.push(message);
-    this.messages.set(workspaceId, existing);
-  }
-
-  async getMessages(workspaceId: string): Promise<string[]> {
-    return this.messages.get(workspaceId) || [];
+  async getMessages(workspaceId: string): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(eq(messages.workspaceId, workspaceId))
+      .orderBy(desc(messages.createdAt));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
