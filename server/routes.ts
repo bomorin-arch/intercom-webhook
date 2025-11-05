@@ -1,6 +1,5 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
 import { intercomRequestSchema, type CanvasResponse } from "@shared/schema";
 import crypto from "crypto";
 
@@ -96,6 +95,7 @@ function getSuccessCanvas(message: string): CanvasResponse {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const clientSecret = process.env.INTERCOM_CLIENT_SECRET || "";
+  const clayWebhookUrl = process.env.CLAY_WEBHOOK_URL || "https://api.clay.com/v3/sources/webhook/pull-in-data-from-a-webhook-b22d6978-affc-4de2-a1f7-2a8be0555b2b";
 
   // Middleware to verify Intercom requests
   const verifyRequest = (req: any, res: any, next: any) => {
@@ -175,10 +175,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return;
         }
 
-        // Save message to storage
-        if (workspace_id) {
-          await storage.saveMessage(workspace_id, userMessage);
-          console.log("Message saved:", userMessage);
+        // Send data to Clay webhook
+        try {
+          const webhookPayload = {
+            conversation_id: requestData.conversation_id || "unknown",
+            comment: userMessage,
+            workspace_id: workspace_id,
+            timestamp: new Date().toISOString(),
+          };
+
+          const webhookResponse = await fetch(clayWebhookUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(webhookPayload),
+          });
+
+          if (!webhookResponse.ok) {
+            console.error("Clay webhook failed:", await webhookResponse.text());
+          } else {
+            console.log("Data sent to Clay:", webhookPayload);
+          }
+        } catch (error) {
+          console.error("Error sending to Clay webhook:", error);
         }
 
         // Return success canvas
