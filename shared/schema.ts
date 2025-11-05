@@ -1,18 +1,39 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+// Intercom Canvas Kit request body schema
+export const intercomRequestSchema = z.object({
+  workspace_id: z.string().optional(),
+  admin: z.any().optional(),
+  user: z.any().optional(),
+  component_id: z.string().optional(),
+  input_values: z.record(z.any()).optional(),
+  current_canvas: z.any().optional(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
+export type IntercomRequest = z.infer<typeof intercomRequestSchema>;
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+// Canvas response types
+export interface CanvasComponent {
+  type: string;
+  id?: string;
+  text?: string;
+  label?: string;
+  placeholder?: string;
+  style?: string;
+  align?: string;
+  action?: {
+    type: string;
+  };
+  value?: string;
+}
+
+export interface CanvasResponse {
+  canvas: {
+    content: {
+      components: CanvasComponent[];
+    };
+  };
+  event?: {
+    type: string;
+  };
+}

@@ -1,37 +1,26 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+// Storage interface for Intercom Canvas Kit app
+// This app stores submitted messages in memory
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  saveMessage(workspaceId: string, message: string): Promise<void>;
+  getMessages(workspaceId: string): Promise<string[]>;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<string, User>;
+  private messages: Map<string, string[]>;
 
   constructor() {
-    this.users = new Map();
+    this.messages = new Map();
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async saveMessage(workspaceId: string, message: string): Promise<void> {
+    const existing = this.messages.get(workspaceId) || [];
+    existing.push(message);
+    this.messages.set(workspaceId, existing);
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async getMessages(workspaceId: string): Promise<string[]> {
+    return this.messages.get(workspaceId) || [];
   }
 }
 
