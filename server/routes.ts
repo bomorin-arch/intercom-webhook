@@ -179,8 +179,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Send data to Clay webhook
         try {
+          const conversationId = requestData.conversation?.id || requestData.conversation_id || "unknown";
           const webhookPayload = {
-            conversation_id: requestData.conversation_id || "unknown",
+            conversation_id: conversationId,
             comment: userMessage,
             workspace_id: workspace_id,
             timestamp: new Date().toISOString(),

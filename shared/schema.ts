@@ -4,6 +4,9 @@ import { z } from "zod";
 export const intercomRequestSchema = z.object({
   workspace_id: z.string().optional(),
   conversation_id: z.string().optional(),
+  conversation: z.object({
+    id: z.string(),
+  }).optional(),
   admin: z.any().optional(),
   user: z.any().optional(),
   component_id: z.string().optional(),
