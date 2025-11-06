@@ -130,6 +130,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestData = intercomRequestSchema.parse(req.body);
       const { component_id, input_values, workspace_id } = requestData;
 
+      // Log the full request body to see what Intercom sends
+      console.log("Full request body:", JSON.stringify(req.body, null, 2));
       console.log("Submit request:", { component_id, workspace_id });
 
       // Handle send button click
