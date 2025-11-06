@@ -7,7 +7,11 @@ export const intercomRequestSchema = z.object({
   conversation: z.object({
     id: z.string(),
   }).optional(),
-  admin: z.any().optional(),
+  admin: z.object({
+    id: z.string(),
+    name: z.string().optional(),
+    email: z.string().optional(),
+  }).optional(),
   user: z.any().optional(),
   component_id: z.string().optional(),
   input_values: z.record(z.any()).optional(),

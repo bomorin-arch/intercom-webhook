@@ -184,6 +184,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             conversation_id: conversationId,
             comment: userMessage,
             workspace_id: workspace_id,
+            triggered_by: {
+              id: requestData.admin?.id || "unknown",
+              name: requestData.admin?.name || "unknown",
+              email: requestData.admin?.email || "unknown",
+            },
             timestamp: new Date().toISOString(),
           };
 
