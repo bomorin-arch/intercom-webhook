@@ -33,15 +33,15 @@ function getInputCanvas(): CanvasResponse {
         components: [
           {
             type: "text",
-            text: "Send us a message",
+            text: "Add your feedback",
             style: "header",
             align: "left",
           },
           {
             type: "input",
             id: "text_input",
-            label: "Your message",
-            placeholder: "Type your message here...",
+            label: "Share your feedback in your own words or what you'd like us to focus on",
+            placeholder: "Type your feedback here...",
           },
           {
             type: "button",
@@ -146,20 +146,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 components: [
                   {
                     type: "text",
-                    text: "Send us a message",
+                    text: "Add your feedback",
                     style: "header",
                     align: "left",
                   },
                   {
                     type: "text",
-                    text: "Please enter a message before sending.",
+                    text: "Please enter your feedback before sending.",
                     style: "muted",
                   },
                   {
                     type: "input",
                     id: "text_input",
-                    label: "Your message",
-                    placeholder: "Type your message here...",
+                    label: "Share your feedback in your own words or what you'd like us to focus on",
+                    placeholder: "Type your feedback here...",
                   },
                   {
                     type: "button",
