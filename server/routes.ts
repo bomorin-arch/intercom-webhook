@@ -25,8 +25,53 @@ function verifyIntercomRequest(
   return hash === signature;
 }
 
-// Initial canvas with text input and send button
-function getInputCanvas(): CanvasResponse {
+// Send feedback to Clay webhook
+async function sendToClayWebhook(
+  requestData: any,
+  feedback: string,
+  link: string | null,
+  workspaceId: string | undefined,
+  webhookUrl: string
+): Promise<void> {
+  try {
+    const conversationId = requestData.conversation?.id || requestData.conversation_id || "unknown";
+    const webhookPayload: any = {
+      conversation_id: conversationId,
+      feedback: feedback,
+      workspace_id: workspaceId,
+      triggered_by: {
+        id: requestData.admin?.id || "unknown",
+        name: requestData.admin?.name || "unknown",
+        email: requestData.admin?.email || "unknown",
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    // Add link if provided
+    if (link && link.trim() !== "") {
+      webhookPayload.link = link;
+    }
+
+    const webhookResponse = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(webhookPayload),
+    });
+
+    if (!webhookResponse.ok) {
+      console.error("Clay webhook failed:", await webhookResponse.text());
+    } else {
+      console.log("Data sent to Clay:", webhookPayload);
+    }
+  } catch (error) {
+    console.error("Error sending to Clay webhook:", error);
+  }
+}
+
+// Lite canvas with large text area
+function getLiteCanvas(): CanvasResponse {
   return {
     canvas: {
       content: {
@@ -38,8 +83,8 @@ function getInputCanvas(): CanvasResponse {
             align: "left",
           },
           {
-            type: "input",
-            id: "text_input",
+            type: "textarea",
+            id: "feedback_text",
             label: "Share your feedback in your own words or what you'd like us to focus on",
             placeholder: "Type your feedback here...",
           },
@@ -47,7 +92,64 @@ function getInputCanvas(): CanvasResponse {
             type: "button",
             label: "Send",
             style: "primary",
-            id: "send_button",
+            id: "send_lite_button",
+            action: {
+              type: "submit",
+            },
+          },
+          {
+            type: "button",
+            label: "Switch to Complete Form",
+            style: "secondary",
+            id: "switch_to_complete",
+            action: {
+              type: "submit",
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
+// Complete canvas with all fields
+function getCompleteCanvas(): CanvasResponse {
+  return {
+    canvas: {
+      content: {
+        components: [
+          {
+            type: "text",
+            text: "Add your feedback",
+            style: "header",
+            align: "left",
+          },
+          {
+            type: "textarea",
+            id: "feedback_text",
+            label: "What's your feedback?",
+            placeholder: "Type your feedback here...",
+          },
+          {
+            type: "input",
+            id: "link_input",
+            label: "Wanna include a link? (Clay table, Loom recording, or gong link)",
+            placeholder: "Paste link here...",
+          },
+          {
+            type: "button",
+            label: "Send",
+            style: "primary",
+            id: "send_complete_button",
+            action: {
+              type: "submit",
+            },
+          },
+          {
+            type: "button",
+            label: "Switch to Lite Form",
+            style: "secondary",
+            id: "switch_to_lite",
             action: {
               type: "submit",
             },
@@ -111,13 +213,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   };
 
-  // Initialize endpoint - returns the initial canvas
+  // Initialize endpoint - returns the initial canvas (lite by default)
   app.post("/initialize", verifyRequest, async (req, res) => {
     try {
       const requestData = intercomRequestSchema.parse(req.body);
       console.log("Initialize request from workspace:", requestData.workspace_id);
-      
-      res.json(getInputCanvas());
+
+      res.json(getLiteCanvas());
     } catch (error) {
       console.error("Initialize error:", error);
       res.status(400).json({ error: "Invalid request" });
@@ -130,16 +232,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestData = intercomRequestSchema.parse(req.body);
       const { component_id, input_values, workspace_id } = requestData;
 
-      // Log the full request body to see what Intercom sends
-      console.log("Full request body:", JSON.stringify(req.body, null, 2));
       console.log("Submit request:", { component_id, workspace_id });
 
-      // Handle send button click
-      if (component_id === "send_button") {
-        const userMessage = input_values?.text_input as string;
+      // Handle switch to complete form
+      if (component_id === "switch_to_complete") {
+        res.json(getCompleteCanvas());
+        return;
+      }
 
-        if (!userMessage || userMessage.trim() === "") {
-          // Return canvas with error message
+      // Handle switch to lite form
+      if (component_id === "switch_to_lite") {
+        res.json(getLiteCanvas());
+        return;
+      }
+
+      // Handle lite form submission
+      if (component_id === "send_lite_button") {
+        const feedback = input_values?.feedback_text as string;
+
+        if (!feedback || feedback.trim() === "") {
           res.json({
             canvas: {
               content: {
@@ -153,11 +264,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   {
                     type: "text",
                     text: "Please enter your feedback before sending.",
-                    style: "muted",
+                    style: "error",
                   },
                   {
-                    type: "input",
-                    id: "text_input",
+                    type: "textarea",
+                    id: "feedback_text",
                     label: "Share your feedback in your own words or what you'd like us to focus on",
                     placeholder: "Type your feedback here...",
                   },
@@ -165,7 +276,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     type: "button",
                     label: "Send",
                     style: "primary",
-                    id: "send_button",
+                    id: "send_lite_button",
+                    action: {
+                      type: "submit",
+                    },
+                  },
+                  {
+                    type: "button",
+                    label: "Switch to Complete Form",
+                    style: "secondary",
+                    id: "switch_to_complete",
                     action: {
                       type: "submit",
                     },
@@ -178,50 +298,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Send data to Clay webhook
-        try {
-          const conversationId = requestData.conversation?.id || requestData.conversation_id || "unknown";
-          const webhookPayload = {
-            conversation_id: conversationId,
-            comment: userMessage,
-            workspace_id: workspace_id,
-            triggered_by: {
-              id: requestData.admin?.id || "unknown",
-              name: requestData.admin?.name || "unknown",
-              email: requestData.admin?.email || "unknown",
-            },
-            timestamp: new Date().toISOString(),
-          };
-
-          const webhookResponse = await fetch(clayWebhookUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(webhookPayload),
-          });
-
-          if (!webhookResponse.ok) {
-            console.error("Clay webhook failed:", await webhookResponse.text());
-          } else {
-            console.log("Data sent to Clay:", webhookPayload);
-          }
-        } catch (error) {
-          console.error("Error sending to Clay webhook:", error);
-        }
+        await sendToClayWebhook(requestData, feedback, null, workspace_id, clayWebhookUrl);
 
         // Return success canvas
-        res.json(getSuccessCanvas(userMessage));
+        res.json(getSuccessCanvas(feedback));
+        return;
+      }
+
+      // Handle complete form submission
+      if (component_id === "send_complete_button") {
+        const feedback = input_values?.feedback_text as string;
+        const link = input_values?.link_input as string;
+
+        if (!feedback || feedback.trim() === "") {
+          res.json({
+            canvas: {
+              content: {
+                components: [
+                  {
+                    type: "text",
+                    text: "Add your feedback",
+                    style: "header",
+                    align: "left",
+                  },
+                  {
+                    type: "text",
+                    text: "Please enter your feedback before sending.",
+                    style: "error",
+                  },
+                  {
+                    type: "textarea",
+                    id: "feedback_text",
+                    label: "What's your feedback?",
+                    placeholder: "Type your feedback here...",
+                  },
+                  {
+                    type: "input",
+                    id: "link_input",
+                    label: "Wanna include a link? (Clay table, Loom recording, or gong link)",
+                    placeholder: "Paste link here...",
+                  },
+                  {
+                    type: "button",
+                    label: "Send",
+                    style: "primary",
+                    id: "send_complete_button",
+                    action: {
+                      type: "submit",
+                    },
+                  },
+                  {
+                    type: "button",
+                    label: "Switch to Lite Form",
+                    style: "secondary",
+                    id: "switch_to_lite",
+                    action: {
+                      type: "submit",
+                    },
+                  },
+                ],
+              },
+            },
+          });
+          return;
+        }
+
+        // Send data to Clay webhook
+        await sendToClayWebhook(requestData, feedback, link, workspace_id, clayWebhookUrl);
+
+        // Return success canvas
+        res.json(getSuccessCanvas(feedback));
         return;
       }
 
       // Handle reset button click
       if (component_id === "reset_button") {
-        res.json(getInputCanvas());
+        res.json(getLiteCanvas());
         return;
       }
 
-      // Unknown component
-      res.json(getInputCanvas());
+      // Unknown component - return lite canvas
+      res.json(getLiteCanvas());
     } catch (error) {
       console.error("Submit error:", error);
       res.status(400).json({ error: "Invalid request" });
