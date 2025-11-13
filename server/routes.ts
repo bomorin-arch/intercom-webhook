@@ -29,7 +29,7 @@ function verifyIntercomRequest(
 async function sendToClayWebhook(
   requestData: any,
   feedback: string,
-  link: string | null,
+  additionalData: any,
   workspaceId: string | undefined,
   webhookUrl: string
 ): Promise<void> {
@@ -47,9 +47,21 @@ async function sendToClayWebhook(
       timestamp: new Date().toISOString(),
     };
 
-    // Add link if provided
-    if (link && link.trim() !== "") {
-      webhookPayload.link = link;
+    // Add all additional fields if provided
+    if (additionalData.link && additionalData.link.trim() !== "") {
+      webhookPayload.link = additionalData.link;
+    }
+    if (additionalData.impacted_customers && additionalData.impacted_customers.trim() !== "") {
+      webhookPayload.impacted_customers = additionalData.impacted_customers;
+    }
+    if (additionalData.ticket_reference && additionalData.ticket_reference.trim() !== "") {
+      webhookPayload.ticket_reference = additionalData.ticket_reference;
+    }
+    if (additionalData.ready_to_send && additionalData.ready_to_send.trim() !== "") {
+      webhookPayload.ready_to_send = additionalData.ready_to_send;
+    }
+    if (additionalData.feedback_report && additionalData.feedback_report.trim() !== "") {
+      webhookPayload.feedback_report = additionalData.feedback_report;
     }
 
     const webhookResponse = await fetch(webhookUrl, {
@@ -120,25 +132,51 @@ function getCompleteCanvas(): CanvasResponse {
         components: [
           {
             type: "text",
-            text: "Add your feedback",
+            text: "Feedback Form",
             style: "header",
             align: "left",
           },
           {
             type: "textarea",
             id: "feedback_text",
-            label: "What's your feedback?",
+            label: "⭐ What's your feedback?",
             placeholder: "Type your feedback here...",
           },
           {
             type: "input",
+            id: "impacted_customers",
+            label: "👥 Which customers are the most impacted?",
+            placeholder: "Everyone, Enterprise, Pro, Other...",
+          },
+          {
+            type: "input",
             id: "link_input",
-            label: "Wanna include a link? (Clay table, Loom recording, or gong link)",
-            placeholder: "Paste link here...",
+            label: "🔗 Wanna include a link?",
+            placeholder: "Clay table, Loom recording, or Gong link...",
+          },
+          {
+            type: "input",
+            id: "ticket_reference",
+            label: "✉️ Want to reference a ticket?",
+            placeholder: "Paste ticket ID or URL...",
+          },
+          {
+            type: "dropdown",
+            id: "ready_to_send",
+            label: "📤 Ready to send?",
+            placeholder: "Select an option...",
+            value: "Clarify it first then send it ✍️|Send it like I wrote it 😊|Don't send - need to work more on it 🚧",
+          },
+          {
+            type: "dropdown",
+            id: "feedback_report",
+            label: "📊 Ready for a Product Feedback Report?",
+            placeholder: "Select an option...",
+            value: "Link it to an existing report 🔗|Creating a new one ➕",
           },
           {
             type: "button",
-            label: "Send",
+            label: "Send Feedback",
             style: "primary",
             id: "send_complete_button",
             action: {
@@ -147,7 +185,7 @@ function getCompleteCanvas(): CanvasResponse {
           },
           {
             type: "button",
-            label: "Switch to Lite Form",
+            label: "← Back to Lite",
             style: "secondary",
             id: "switch_to_lite",
             action: {
@@ -298,7 +336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Send data to Clay webhook
-        await sendToClayWebhook(requestData, feedback, null, workspace_id, clayWebhookUrl);
+        await sendToClayWebhook(requestData, feedback, {}, workspace_id, clayWebhookUrl);
 
         // Return success canvas
         res.json(getSuccessCanvas(feedback));
@@ -308,63 +346,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle complete form submission
       if (component_id === "send_complete_button") {
         const feedback = input_values?.feedback_text as string;
-        const link = input_values?.link_input as string;
 
         if (!feedback || feedback.trim() === "") {
-          res.json({
-            canvas: {
-              content: {
-                components: [
-                  {
-                    type: "text",
-                    text: "Add your feedback",
-                    style: "header",
-                    align: "left",
-                  },
-                  {
-                    type: "text",
-                    text: "Please enter your feedback before sending.",
-                    style: "error",
-                  },
-                  {
-                    type: "textarea",
-                    id: "feedback_text",
-                    label: "What's your feedback?",
-                    placeholder: "Type your feedback here...",
-                  },
-                  {
-                    type: "input",
-                    id: "link_input",
-                    label: "Wanna include a link? (Clay table, Loom recording, or gong link)",
-                    placeholder: "Paste link here...",
-                  },
-                  {
-                    type: "button",
-                    label: "Send",
-                    style: "primary",
-                    id: "send_complete_button",
-                    action: {
-                      type: "submit",
-                    },
-                  },
-                  {
-                    type: "button",
-                    label: "Switch to Lite Form",
-                    style: "secondary",
-                    id: "switch_to_lite",
-                    action: {
-                      type: "submit",
-                    },
-                  },
-                ],
-              },
-            },
-          });
+          res.json(getCompleteCanvas());
           return;
         }
 
+        // Extract all form fields
+        const additionalData = {
+          link: input_values?.link_input as string,
+          impacted_customers: input_values?.impacted_customers as string,
+          ticket_reference: input_values?.ticket_reference as string,
+          ready_to_send: input_values?.ready_to_send as string,
+          feedback_report: input_values?.feedback_report as string,
+        };
+
         // Send data to Clay webhook
-        await sendToClayWebhook(requestData, feedback, link, workspace_id, clayWebhookUrl);
+        await sendToClayWebhook(requestData, feedback, additionalData, workspace_id, clayWebhookUrl);
 
         // Return success canvas
         res.json(getSuccessCanvas(feedback));
