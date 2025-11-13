@@ -161,18 +161,16 @@ function getCompleteCanvas(): CanvasResponse {
             placeholder: "Paste ticket ID or URL...",
           },
           {
-            type: "dropdown",
+            type: "input",
             id: "ready_to_send",
             label: "📤 Ready to send?",
-            placeholder: "Select an option...",
-            value: "Clarify it first then send it ✍️|Send it like I wrote it 😊|Don't send - need to work more on it 🚧",
+            placeholder: "Clarify first / Send as-is / Don't send...",
           },
           {
-            type: "dropdown",
+            type: "input",
             id: "feedback_report",
             label: "📊 Ready for a Product Feedback Report?",
-            placeholder: "Select an option...",
-            value: "Link it to an existing report 🔗|Creating a new one ➕",
+            placeholder: "Link to existing / Create new...",
           },
           {
             type: "button",
